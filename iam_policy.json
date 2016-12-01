@@ -3,13 +3,25 @@
   "Statement": [
     {
       "Effect": "Allow",
-      "Action":   [ "dynamodb:PutItem" ],
+      "Action": [
+        "dynamodb:PutItem" 
+      ],
       "Resource": [ "*" ]
     },
     {
       "Effect": "Allow",
-      "Action":   [ "sns:Publish" ],
+      "Action": [
+        "sns:Publish" 
+      ],
       "Resource": [ "*" ]
+    },
+    {
+      "Effect":"Allow",
+      "Action": [
+        "xray: PutTraceSegments",
+        "xray: PutTelemetryRecords"
+      ],
+      "Resource":[ "*" ]
     }
   ]
 }

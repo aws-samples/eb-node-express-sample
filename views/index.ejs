@@ -6,18 +6,16 @@
     <meta name="description" content="">
     <meta name="author" content="">
 
-    <title>A New Startup: Sign Up Today!</title>
+    <title>AWS X-Ray Sample Application</title>
 
     <!-- Bootstrap core CSS -->
     <link href="<%= static_path + "/bootstrap/css/theme/" + theme + "/bootstrap.css" %>" rel="stylesheet">
 
     <!-- Custom styles for this template -->
     <link href="<%= static_path + "/bootstrap/css/jumbotron-narrow.css" %>" rel="stylesheet">
-
   </head>
 
   <body>
-
     <div class="container">
       <div class="header">
         <ul class="nav nav-pills pull-right">
@@ -28,29 +26,56 @@
         </ul>
         <h3 class="text-muted">A New Startup</h3>
       </div>
-	  <% if (flask_debug === 'true') { %>
-      <div class="alert alert-danger">
-      	Flask is in debug mode. This is not safe for production.
-      </div>
+
+	    <% if (flask_debug === 'true') { %>
+        <div class="alert alert-danger">
+        	Flask is in debug mode. This is not safe for production.
+        </div>
       <% } %>
+
+      <div class="alert" style="background-color:AliceBlue; border:2px solid AliceBlue" role="alert">
+        <h3 class="alert-heading">AWS X-Ray Sample Application</h4>
+        <p style="text-align:justify;">
+          Aww yeah, you've successfully launched the AWS X-Ray sample application. Use the start/stop buttons below to control the generation of signup requests. The application will generate up to 10 signup requests per minute with a duplicate signup each minute. Alternatively, you can use the form below to manually generate signup requests. Once you've generated a few requests, go to the <a style="color:Blue;" target="_blank" href="https://console.aws.amazon.com/xray/home#/service-map?timeRange=PT5M">AWS X-Ray Console</a> to view the service map and traces.
+        </p>
+        <div class="row" style="padding:14px 0px;">
+          <div class="col-xs-3">
+            <button id="start" type="button" class="btn btn-success btn-block">Start</button>
+          </div>
+          <div class="col-xs-3">
+            <button id="stop" type="button" class="btn btn-danger btn-block disabled">Stop</button>
+          </div>
+        </div>
+        <p id="status">Status: click 'Start' to begin</p>
+      </div>
+
       <div id="signupSuccess" class="alert alert-success" style="display:none">
-        <p id="signupSuccessText">Thanks for signing up! You'll be among the first to know when we launch.</p>
+        <p id="signupSuccessText">
+          Thanks for signing up! You'll be among the first to know when we launch.</p>
       </div>
       <div id="signupDuplicate" class="alert alert-success" style="display:none">
-        <p id="signupDuplicateText">Fear not, you're already on the list! You'll be among the first to know when we launch.</p>
+        <p id="signupDuplicateText">
+          Fear not, you're already on the list! You'll be among the first to know when we launch.
+        </p>
       </div>
       <div id="signupError" class="alert alert-info" style="display:none">
-        <p id="signupErrorText">Well this is embarrassing. It looks like we're having trouble getting you on the list.</p>
+        <p id="signupErrorText">
+          Well this is embarrassing. It looks like we're having trouble getting you on the list.
+        </p>
       </div>
+
       <div class="jumbotron">
         <h1>The next big thing is coming...</h1>
-        <p class="lead">We're pretty thrilled to unveil our latest creation. Sign up below to be notified when we officially launch!</p>
-        <p><a class="btn btn-lg btn-success"  data-toggle="modal" href="#signupModal">Sign up today</a></p>
+        <p class="lead">
+          We're pretty thrilled to unveil our latest creation. Sign up below to be notified when we officially launch!
+        </p>
+        <p>
+          <a class="btn btn-lg btn-success" data-toggle="modal" href="#signupModal">Sign up today</a>
+        </p>
       </div>
 
-
       <div class="footer">
-        <p>&copy; A New Startup 2013</p>
+        <p>&copy; A New Startup 2016</p>
       </div>
       
       <!-- Modal -->
@@ -86,33 +111,87 @@
            </div><!-- /.modal-content -->
          </div><!-- /.modal-dialog -->
        </div><!-- /.modal -->
-
     </div> <!-- /container -->
 
     <script src="<%= static_path + "/jquery/jquery-1.11.3.min.js" %>"></script>
     <script src="<%= static_path + "/bootstrap/js/bootstrap.min.js" %>"></script>
     <script type="text/javascript">
-    $(document).ready(function() {
+    
+    var index = 0;
+    var interval = null;
+
+    function generateSignupRequest() {
+      $.getJSON('http://uinames.com/api/?ext', function(data) {
+        $('#status').html("Status: request #" + index + ", signing up " + data.email);
+        $.post( "/signup", { 
+          name: data.name + " " + data.surname,
+          email: data.email,
+          theme: "flatly",
+          previewAccess: "Yes"
+        });
+      });      
+    }
+
+    function generateDuplicateSignupRequest() {
+      $('#status').html("Status: request #" + index + ", signing up duplicate@example.com");
+      $.post( "/signup", { 
+        name: "Duplicate Record",
+        email: "duplicate@example.com",
+        theme: "flatly",
+        previewAccess: "Yes"
+      });
+    }
+
+    $(function() {
       $("#signup").click(function() {
-        $.post( "/signup", $("#signupForm").serialize(),
-                function(data) {
-                  $("#signupSuccess").show();
-                }
-              )
-              .error(function(xhr) {
-                switch(xhr.status) {
-                  case 409:
-                    $("#signupDuplicate").show();
-                    break;
-                  default:
-                    $("#signupError").show();
-                }
-              })
-              .always(function() {
-                $("#signupModal").modal('hide');
-              });
-      })
-    })
+        $.post("/signup", $("#signupForm").serialize(), 
+          function(data) {
+            $("#signupSuccess").show();
+          })
+        .error(function(xhr) {
+          switch(xhr.status) {
+            case 409:
+              $("#signupDuplicate").show();
+              break;
+            default:
+              $("#signupError").show();
+          }
+        })
+        .always(function() {
+          $("#signupModal").modal('hide');
+        });
+      });
+    });
+
+    $(function() {
+      $("#start").click(function() {
+        index = 1;
+
+        $('#start').addClass('disabled');
+        $('#stop').removeClass('disabled');
+        
+        generateSignupRequest();
+
+        interval = setInterval(function () {
+          index++;
+
+          if (index % 10 == 0) {
+            generateDuplicateSignupRequest();
+          } else {
+            generateSignupRequest();
+          }
+        }, 6000);
+      });
+    });
+
+    $(function() {
+      $("#stop").click(function() {
+        clearInterval(interval);
+        $('#stop').addClass('disabled');
+        $('#start').removeClass('disabled');
+        $('#status').html("Status: Click 'Start' to begin");
+      });
+    });
     </script>
   </body>
 </html>

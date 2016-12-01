@@ -24,28 +24,40 @@ if (cluster.isMaster) {
 // Code to run if we're in a worker process
 } else {
     var AWS = require('aws-sdk');
+    var http = require('http');
+    var XRay = require('aws-xray-sdk');
     var express = require('express');
     var bodyParser = require('body-parser');
+    var queryString = require('querystring');
 
     AWS.config.region = process.env.REGION
 
-    var sns = new AWS.SNS();
-    var ddb = new AWS.DynamoDB();
+    XRay.config([XRay.plugins.EC2]);
+    XRay.captureHTTPs(http);
+    XRay.setDefaultName('myfrontend-dev');
 
+    var app = express();
+    var sns = XRay.captureAWSClient(new AWS.SNS());
+    var ddb = XRay.captureAWSClient(new AWS.DynamoDB());
     var ddbTable =  process.env.STARTUP_SIGNUP_TABLE;
     var snsTopic =  process.env.NEW_SIGNUP_TOPIC;
-    var app = express();
 
     app.set('view engine', 'ejs');
     app.set('views', __dirname + '/views');
     app.use(bodyParser.urlencoded({extended:false}));
+    app.use(XRay.express.openSegment());
 
     app.get('/', function(req, res) {
-        res.render('index', {
-            static_path: 'static',
-            theme: process.env.THEME || 'flatly',
-            flask_debug: process.env.FLASK_DEBUG || 'false'
+        XRay.captureAsync('Page Render', function(seg) {
+            res.render('index', {
+                static_path: 'static',
+                theme: process.env.THEME || 'flatly',
+                flask_debug: process.env.FLASK_DEBUG || 'false'
+            });
+            seg.close();
         });
+        
+        res.status(200).end();
     });
 
     app.post('/signup', function(req, res) {
@@ -56,20 +68,20 @@ if (cluster.isMaster) {
             'theme': {'S': req.body.theme}
         };
 
+        var seg = XRay.getSegment();
+        seg.addAnnotation('theme', req.body.theme);
+
         ddb.putItem({
             'TableName': ddbTable,
             'Item': item,
             'Expected': { email: { Exists: false } }        
         }, function(err, data) {
             if (err) {
-                var returnStatus = 500;
-
                 if (err.code === 'ConditionalCheckFailedException') {
-                    returnStatus = 409;
+                    res.status(409).end("User already exists");
+                } else {
+                    res.status(500).end("DDB Error");
                 }
-
-                res.status(returnStatus).end();
-                console.log('DDB Error: ' + err);
             } else {
                 sns.publish({
                     'Message': 'Name: ' + req.body.name + "\r\nEmail: " + req.body.email 
@@ -79,15 +91,16 @@ if (cluster.isMaster) {
                     'TopicArn': snsTopic
                 }, function(err, data) {
                     if (err) {
-                        res.status(500).end();
-                        console.log('SNS Error: ' + err);
+                        res.status(500).end("SNS Error");
                     } else {
-                        res.status(201).end();
+                        res.status(201).end("Success");
                     }
                 });            
             }
         });
     });
+
+    app.use(XRay.express.closeSegment());
 
     var port = process.env.PORT || 3000;
 
