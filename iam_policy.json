@@ -18,8 +18,8 @@
     {
       "Effect":"Allow",
       "Action": [
-        "xray: PutTraceSegments",
-        "xray: PutTelemetryRecords"
+        "xray:PutTraceSegments",
+        "xray:PutTelemetryRecords"
       ],
       "Resource":[ "*" ]
     }
