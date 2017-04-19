@@ -23,32 +23,34 @@ if (cluster.isMaster) {
 
 // Code to run if we're in a worker process
 } else {
-    var AWS = require('aws-sdk');
-    var http = require('http');
+    // Include the AWS X-Ray Node.js SDK and set configuration
     var XRay = require('aws-xray-sdk');
+    var AWS = XRay.captureAWS(require('aws-sdk'));
+    var http = XRay.captureHTTPs(require('http'));
     var express = require('express');
     var bodyParser = require('body-parser');
     var queryString = require('querystring');
 
     AWS.config.region = process.env.REGION
 
-    XRay.config([XRay.plugins.EC2]);
-    XRay.captureHTTPs(http);
-    XRay.setDefaultName('myfrontend-dev');
+    XRay.config([XRay.plugins.EC2Plugin, XRay.plugins.ElasticBeanstalkPlugin]);
+    XRay.middleware.setSamplingRules('sampling-rules.json');
+    XRay.middleware.enableDynamicNaming();
 
     var app = express();
-    var sns = XRay.captureAWSClient(new AWS.SNS());
-    var ddb = XRay.captureAWSClient(new AWS.DynamoDB());
-    var ddbTable =  process.env.STARTUP_SIGNUP_TABLE;
-    var snsTopic =  process.env.NEW_SIGNUP_TOPIC;
+    var sns = new AWS.SNS();
+    var ddb = new AWS.DynamoDB();
+    var ddbTable = process.env.STARTUP_SIGNUP_TABLE;
+    var snsTopic = process.env.NEW_SIGNUP_TOPIC;
+    var apiCNAME = process.env.API_CNAME || 'localhost';
 
     app.set('view engine', 'ejs');
     app.set('views', __dirname + '/views');
     app.use(bodyParser.urlencoded({extended:false}));
-    app.use(XRay.express.openSegment());
+    app.use(XRay.express.openSegment('myfrontend'));
 
     app.get('/', function(req, res) {
-        XRay.captureAsync('Page Render', function(seg) {
+        XRay.captureAsyncFunc('Page Render', function(seg) {
             res.render('index', {
                 static_path: 'static',
                 theme: process.env.THEME || 'flatly',
@@ -69,7 +71,9 @@ if (cluster.isMaster) {
         };
 
         var seg = XRay.getSegment();
+        seg.addAnnotation('email', req.body.email);
         seg.addAnnotation('theme', req.body.theme);
+        seg.addAnnotation('previewAccess', req.body.previewAccess);
 
         ddb.putItem({
             'TableName': ddbTable,
@@ -98,6 +102,47 @@ if (cluster.isMaster) {
                 });            
             }
         });
+    });
+
+    app.post('/remoteSignup', function(req, res) {
+        var seg = XRay.getSegment();
+        seg.addAnnotation('theme', req.body.theme);
+        seg.addAnnotation('previewAccess', req.body.previewAccess);
+
+        var reqData = queryString.stringify(req.body);
+
+        var options = {
+            host: apiCNAME,
+            port: '80',
+            path: '/signup',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Length': Buffer.byteLength(reqData)
+            }
+        };
+
+        // Set up the request
+        var remoteReq = http.request(options, function(remoteRes) {
+            var body = '';
+            remoteRes.setEncoding('utf8');
+            
+            remoteRes.on('data', function(chunk) {
+                body += chunk;
+            });
+
+            remoteRes.on('end', function() {
+                res.status(remoteRes.statusCode).send(body);                
+            });
+        });
+
+        remoteReq.on('error', function(err) {
+            res.status(500).end("Remote error");
+        });
+
+        // post the data
+        remoteReq.write(reqData);
+        remoteReq.end();
     });
 
     app.use(XRay.express.closeSegment());
