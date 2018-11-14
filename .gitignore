@@ -2,3 +2,5 @@
 
 # Elastic Beanstalk CLI Files
 .elasticbeanstalk/*
+venv/*
+template-packages.yml
