@@ -1,5 +1,5 @@
 {
-  "name": "Elastic-Beanstalk-Sample-App",
+  "name": "Elastic-Beanstalk-Express-Sample-App",
   "version": "0.0.1",
   "private": true,
   "dependencies": {
