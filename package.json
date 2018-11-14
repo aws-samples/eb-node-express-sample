@@ -1,14 +1,15 @@
 {
-  "name": "Elastic-Beanstalk-Express-Sample-App",
+  "name": "AWS-Lambda-Sample-App",
   "version": "0.0.1",
   "private": true,
-  "dependencies": {
-    "ejs": "latest",
-    "aws-sdk": "latest",
-    "express": "latest",
-    "body-parser": "latest"
+  "devDependencies": {
+    "aws-sdk": "latest"
   },
   "scripts": {
-    "start": "node app"
+    "start": "sam local start-api",
+    "static": "aws s3 sync ./static s3://serverless-signup --acl public-read",
+    "sam-package": "sam package --template-file template.yml --s3-bucket serverless-signup-packages --output-template-file template-packaged.yml --region eu-west-1",
+    "sam-deploy": "sam deploy --template-file template-packaged.yml --stack-name serverless-signup --capabilities CAPABILITY_IAM --region eu-west-1",
+    "deploy": "npm run sam-package; npm run sam-deploy;"
   }
 }
