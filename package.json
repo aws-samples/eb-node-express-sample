@@ -8,6 +8,7 @@
   "scripts": {
     "start": "sam local start-api",
     "static": "aws s3 sync ./static s3://serverless-signup --acl public-read",
+    "logs": "sam logs -n SignUpFunction --stack-name serverless-signup --tail",
     "sam-package": "sam package --template-file template.yml --s3-bucket serverless-signup-packages --output-template-file template-packaged.yml --region eu-west-1",
     "sam-deploy": "sam deploy --template-file template-packaged.yml --stack-name serverless-signup --capabilities CAPABILITY_IAM --region eu-west-1",
     "deploy": "npm run sam-package; npm run sam-deploy;"
