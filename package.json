@@ -9,6 +9,6 @@
     "body-parser": "latest"
   },
   "scripts": {
-    "start": "node app.js"
+    "start": "node app"
   }
 }
