@@ -1,97 +1,72 @@
-// Include the cluster module
-var cluster = require('cluster');
 
-// Code to run if we're in the master process
-if (cluster.isMaster) {
+var AWS = require('aws-sdk');
 
-    // Count the machine's CPUs
-    var cpuCount = require('os').cpus().length;
+AWS.config.region = process.env.REGION;
 
-    // Create a worker for each CPU
-    for (var i = 0; i < cpuCount; i += 1) {
-        cluster.fork();
-    }
+var sns = new AWS.SNS();
+var ddb = new AWS.DynamoDB();
 
-    // Listen for terminating workers
-    cluster.on('exit', function (worker) {
+var ddbTable =  process.env.STARTUP_SIGNUP_TABLE;
+var snsTopic =  process.env.NEW_SIGNUP_TOPIC;
 
-        // Replace the terminated workers
-        console.log('Worker ' + worker.id + ' died :(');
-        cluster.fork();
 
-    });
+const httpResponse = (status, message) => {
+    return {
+        "body": JSON.stringify({'message': message}),
+        "statusCode": status,
+        "headers": {
+            'Access-Control-Allow-Origin': '*',
+            "Access-Control-Allow-Credentials" : true,
+            "Access-Control-Allow-Headers": "'x-requested-with'"
+        },
+    };
+}
+    
 
-// Code to run if we're in a worker process
-} else {
-    var AWS = require('aws-sdk');
-    var express = require('express');
-    var bodyParser = require('body-parser');
 
-    AWS.config.region = process.env.REGION
+exports.lambdaHandler = async (event, context) => {
 
-    var sns = new AWS.SNS();
-    var ddb = new AWS.DynamoDB();
+    console.log("Raw body", event.body);
+    const body = JSON.parse(event.body);
+    console.log("Parsed body", body);
 
-    var ddbTable =  process.env.STARTUP_SIGNUP_TABLE;
-    var snsTopic =  process.env.NEW_SIGNUP_TOPIC;
-    var app = express();
+    var item = {
+        'email': {'S': body.email},
+        'name': {'S': body.name},
+        'preview': {'S': body.previewAccess},
+        'theme': {'S': body.theme}
+    };
+    console.log("DDB Item", item);
 
-    app.set('view engine', 'ejs');
-    app.set('views', __dirname + '/views');
-    app.use(bodyParser.urlencoded({extended:false}));
-
-    app.get('/', function(req, res) {
-        res.render('index', {
-            static_path: 'static',
-            theme: process.env.THEME || 'flatly',
-            flask_debug: process.env.FLASK_DEBUG || 'false'
-        });
-    });
-
-    app.post('/signup', function(req, res) {
-        var item = {
-            'email': {'S': req.body.email},
-            'name': {'S': req.body.name},
-            'preview': {'S': req.body.previewAccess},
-            'theme': {'S': req.body.theme}
-        };
-
-        ddb.putItem({
+    try {
+        await ddb.putItem({
             'TableName': ddbTable,
             'Item': item,
-            'Expected': { email: { Exists: false } }        
-        }, function(err, data) {
-            if (err) {
-                var returnStatus = 500;
+            'Expected': { email: { Exists: false } }
+        }).promise();
+        console.log("Item written into DDB");
+    } catch (err) {
+        console.log("DDB Error: ", err);
+        var returnStatus = 500;
+        if (err.code === 'ConditionalCheckFailedException') {
+            returnStatus = 409;
+        }
+        return httpResponse(returnStatus, "KO");
+    }
 
-                if (err.code === 'ConditionalCheckFailedException') {
-                    returnStatus = 409;
-                }
+    try {
+        await sns.publish({
+            'Message': 'Name: ' + body.name + "\r\nEmail: " + body.email 
+                                + "\r\nPreviewAccess: " + body.previewAccess 
+                                + "\r\nTheme: " + body.theme,
+            'Subject': 'New user sign up!!!',
+            'TopicArn': snsTopic
+        }).promise();
+        console.log("Message written into SNS");
+    } catch (err) {
+        console.log("SNS Error: ", err);
+        return httpResponse(500, "KO");
+    }
 
-                res.status(returnStatus).end();
-                console.log('DDB Error: ' + err);
-            } else {
-                sns.publish({
-                    'Message': 'Name: ' + req.body.name + "\r\nEmail: " + req.body.email 
-                                        + "\r\nPreviewAccess: " + req.body.previewAccess 
-                                        + "\r\nTheme: " + req.body.theme,
-                    'Subject': 'New user sign up!!!',
-                    'TopicArn': snsTopic
-                }, function(err, data) {
-                    if (err) {
-                        res.status(500).end();
-                        console.log('SNS Error: ' + err);
-                    } else {
-                        res.status(201).end();
-                    }
-                });            
-            }
-        });
-    });
-
-    var port = process.env.PORT || 3000;
-
-    var server = app.listen(port, function () {
-        console.log('Server running at http://127.0.0.1:' + port + '/');
-    });
-}
+    return httpResponse(200, "OK");
+};
