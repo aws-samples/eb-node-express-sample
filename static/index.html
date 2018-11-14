@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="">
-    <meta name="author" content="">
+    <meta name="description" content="This is just a static HTML page now.">
+    <meta name="author" content="Alex Casalboni">
 
     <title>A New Startup: Sign Up Today!</title>
 
     <!-- Bootstrap core CSS -->
-    <link href="<%= static_path + "/bootstrap/css/theme/" + theme + "/bootstrap.css" %>" rel="stylesheet">
+    <link href="/bootstrap/css/theme/flatly/bootstrap.css" rel="stylesheet">
 
     <!-- Custom styles for this template -->
-    <link href="<%= static_path + "/bootstrap/css/jumbotron-narrow.css" %>" rel="stylesheet">
+    <link href="/bootstrap/css/jumbotron-narrow.css" rel="stylesheet">
 
   </head>
 
@@ -28,11 +28,7 @@
         </ul>
         <h3 class="text-muted">A New Startup</h3>
       </div>
-	  <% if (flask_debug === 'true') { %>
-      <div class="alert alert-danger">
-      	Flask is in debug mode. This is not safe for production.
-      </div>
-      <% } %>
+
       <div id="signupSuccess" class="alert alert-success" style="display:none">
         <p id="signupSuccessText">Thanks for signing up! You'll be among the first to know when we launch.</p>
       </div>
@@ -63,7 +59,7 @@
              </div>
              <div class="modal-body">
                <form id="signupForm" role="form">
-                 <input type="hidden" id="theme" name="theme" value="<%= theme %>"/>
+                 <input type="hidden" id="theme" name="theme" value="flatly"/>
                  <div class="form-group">
                    <label for="name">Name</label>
                    <input type="text" class="form-control" id="name" name="name" placeholder="Your name">
@@ -89,22 +85,29 @@
 
     </div> <!-- /container -->
 
-    <script src="<%= static_path + "/jquery/jquery-1.11.3.min.js" %>"></script>
-    <script src="<%= static_path + "/bootstrap/js/bootstrap.min.js" %>"></script>
+    <script src="/config.js"></script>
+    <script src="/jquery/jquery-1.11.3.min.js"></script>
+    <script src="/bootstrap/js/bootstrap.min.js" %></script>"></script>
     <script type="text/javascript">
     $(document).ready(function() {
       $("#signup").click(function() {
-        $.post( "/signup", $("#signupForm").serialize(),
-                function(data) {
-                  $("#signupSuccess").show();
-                }
-              )
+        var body = {};
+        $("#signupForm").serializeArray().map(function(obj) {
+          body[obj.name] = obj.value;
+        })
+        $.post( _config.API + "/signup", JSON.stringify(body), null, "json")
+              .success(function() {
+                $("#signupSuccess").show();
+              })
               .error(function(xhr) {
                 switch(xhr.status) {
-                  case 409:
+                  case 200:  // JSON parsing error
+                    $("#signupSuccess").show();
+                    break;
+                  case 409:  // already registered
                     $("#signupDuplicate").show();
                     break;
-                  default:
+                  default:  // real error
                     $("#signupError").show();
                 }
               })
