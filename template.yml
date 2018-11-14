@@ -14,7 +14,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: app
-      Handler: app.lambdaHandler
+      Handler: index.lambdaHandler
       Runtime: nodejs8.10
       Timeout: 10
       MemorySize: 1024
