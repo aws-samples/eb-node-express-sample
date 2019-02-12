@@ -1,6 +1,5 @@
 // Include the cluster module
 var cluster = require('cluster');
-
 // Code to run if we're in the master process
 if (cluster.isMaster) {
 
@@ -41,11 +40,53 @@ if (cluster.isMaster) {
     app.use(bodyParser.urlencoded({extended:false}));
 
     app.get('/', function(req, res) {
-        res.render('index', {
-            static_path: 'static',
-            theme: process.env.THEME || 'flatly',
-            flask_debug: process.env.FLASK_DEBUG || 'false'
-        });
+	let headers = req.headers;
+	res.send(JSON.stringify(headers, null, 4));
+    });
+    
+    function isRedirect(req) {
+	  let reqUA = req.header('user-agent');
+	  if (!reqUA || reqUA === null || reqUA === undefined) {
+	    return false;
+	  }
+	  let cookies = parseCookies(req);
+	  let cookieNoRedirect = (
+	    cookies['cf-noredir'] === true ||
+	    cookies['cf-noredir'] === 'true'
+	  );
+	  if (cookieNoRedirect) {
+	    return false;
+	  }
+	  if (reqUA.match('curl') && !cookieNoRedirect) {
+			return true;
+	  }
+	  return false;
+    }
+
+    function parseCookies (request) {
+      var list = {};
+      var rc = request.headers.cookie;
+
+      rc && rc.split(';').forEach(function( cookie ) {
+        var parts = cookie.split('=');
+        list[parts.shift().trim()] = decodeURI(parts.join('='));
+      });
+
+      return list;
+   }
+
+
+    app.get('/cookie', function(request, res) {
+	 let headers = request.headers;
+	 if (isRedirect(request)) {
+	 	res.send('bye');
+		return;
+	 }
+	 res.send('hello');
+    });
+    
+    app.get('/secure', function(req, res) {
+	    res.send('this is secure page. These are the headers \n' + JSON.stringify(req.headers));
     });
 
     app.post('/signup', function(req, res) {
