@@ -4,12 +4,11 @@
   "private": true,
   "dependencies": {
     "ejs": "2.5.5",
-    "http": "0.0.0",
-    "aws-sdk": "2.9.0",
+    "aws-sdk": "2.682.0",
     "express": "4.14.0",
     "body-parser": "1.16.0",
     "querystring": "0.2.0",
-    "aws-xray-sdk": "1.1.0"
+    "aws-xray-sdk": "3.0.1"
   },
   "scripts": {
     "start": "node app.js"

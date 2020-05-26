@@ -121,15 +121,15 @@
     var interval = null;
 
     function generateSignupRequest() {
-      $.getJSON('http://uinames.com/api/?ext', function(data) {
-        $('#status').html("Status: request #" + index + ", signing up " + data.email);
+      const random = Math.random().toString(36).substring(3);
+      const data = { name: 'name-' + random, surname: 'surname-' + random, email: 'email-' + random + '@aws-xray-testing.com' };
+      $('#status').html("Status: request #" + index + ", signing up " + data.email);
         $.post( "/signup", { 
           name: data.name + " " + data.surname,
           email: data.email,
           theme: "flatly",
           previewAccess: "Yes"
-        });
-      });      
+      });
     }
 
     function generateDuplicateSignupRequest() {
