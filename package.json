@@ -1,5 +1,5 @@
 {
-  "name": "Elastic-Beanstalk-Sample-App",
+  "name": "nodejs-example-dynamo",
   "version": "0.0.1",
   "private": true,
   "dependencies": {

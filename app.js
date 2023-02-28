@@ -1,14 +1,14 @@
 // Include the cluster module
-var cluster = require('cluster');
+const cluster = require('cluster');
 
 // Code to run if we're in the master process
 if (cluster.isMaster) {
 
     // Count the machine's CPUs
-    var cpuCount = require('os').cpus().length;
+    const cpuCount = require('os').cpus().length;
 
     // Create a worker for each CPU
-    for (var i = 0; i < cpuCount; i += 1) {
+    for (let i = 0; i < cpuCount; i += 1) {
         cluster.fork();
     }
 
@@ -23,18 +23,18 @@ if (cluster.isMaster) {
 
 // Code to run if we're in a worker process
 } else {
-    var AWS = require('aws-sdk');
-    var express = require('express');
-    var bodyParser = require('body-parser');
+    const AWS = require('aws-sdk');
+    const express = require('express');
+    const bodyParser = require('body-parser');
 
     AWS.config.region = process.env.REGION
 
-    var sns = new AWS.SNS();
-    var ddb = new AWS.DynamoDB();
+    const sns = new AWS.SNS();
+    const ddb = new AWS.DynamoDB();
 
-    var ddbTable =  process.env.STARTUP_SIGNUP_TABLE;
-    var snsTopic =  process.env.NEW_SIGNUP_TOPIC;
-    var app = express();
+    const ddbTable =  process.env.STARTUP_SIGNUP_TABLE;
+    const snsTopic =  process.env.NEW_SIGNUP_TOPIC;
+    const app = express();
 
     app.set('view engine', 'ejs');
     app.set('views', __dirname + '/views');
@@ -49,7 +49,7 @@ if (cluster.isMaster) {
     });
 
     app.post('/signup', function(req, res) {
-        var item = {
+        const item = {
             'email': {'S': req.body.email},
             'name': {'S': req.body.name},
             'preview': {'S': req.body.previewAccess},
@@ -62,7 +62,7 @@ if (cluster.isMaster) {
             'Expected': { email: { Exists: false } }        
         }, function(err, data) {
             if (err) {
-                var returnStatus = 500;
+                let returnStatus = 500;
 
                 if (err.code === 'ConditionalCheckFailedException') {
                     returnStatus = 409;
@@ -89,9 +89,9 @@ if (cluster.isMaster) {
         });
     });
 
-    var port = process.env.PORT || 3000;
+    const port = process.env.PORT || 3000;
 
-    var server = app.listen(port, function () {
+    const server = app.listen(port, function () {
         console.log('Server running at http://127.0.0.1:' + port + '/');
     });
 }
