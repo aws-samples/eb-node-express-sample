@@ -3,12 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "ejs": "2.5.5",
-    "aws-sdk": "2.682.0",
-    "express": "4.14.0",
-    "body-parser": "1.16.0",
-    "querystring": "0.2.0",
-    "aws-xray-sdk": "3.0.1"
+    "ejs": "latest",
+    "aws-sdk": "latest",
+    "express": "latest",
+    "body-parser": "latest"
   },
   "scripts": {
     "start": "node app.js"
