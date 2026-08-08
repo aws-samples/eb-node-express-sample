@@ -113,7 +113,7 @@
        </div><!-- /.modal -->
     </div> <!-- /container -->
 
-    <script src="<%= static_path + "/jquery/jquery-1.11.3.min.js" %>"></script>
+    <script src="<%= static_path + "/jquery/jquery-3.7.1.min.js" %>"></script>
     <script src="<%= static_path + "/bootstrap/js/bootstrap.min.js" %>"></script>
     <script type="text/javascript">
     
@@ -148,7 +148,7 @@
           function(data) {
             $("#signupSuccess").show();
           })
-        .error(function(xhr) {
+        .fail(function(xhr) {
           switch(xhr.status) {
             case 409:
               $("#signupDuplicate").show();
